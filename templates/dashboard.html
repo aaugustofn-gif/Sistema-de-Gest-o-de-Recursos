@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Início{% endblock %}
+{% block content %}
+<h1>Painel Geral</h1>
+<div class="dashboard-cards">
+  <div class="panel">
+    <div class="valor">{{ total_demandas_pendentes }}</div>
+    <div>Demandas com saldo pendente de autorização</div>
+  </div>
+  <div class="panel">
+    <div class="valor">{{ total_linhas_status }}</div>
+    <div>Parcelas em acompanhamento de aquisição</div>
+  </div>
+  {% if usuario.perfil in ("ADMIN", "SUPERADMIN") %}
+  <div class="panel">
+    <div class="valor">{{ total_usuarios }}</div>
+    <div>Usuários cadastrados</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

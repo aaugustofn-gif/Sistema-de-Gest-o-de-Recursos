@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Status de Aquisição{% endblock %}
+{% block content %}
+<h1>Painel de Controle de Status</h1>
+
+<div class="panel">
+  <form class="filtros" method="get" action="/status">
+    <div>
+      <label>Status</label>
+      <input type="text" name="status_filtro" value="{{ filtros.status or '' }}" placeholder="Ex: AUTORIZADA">
+    </div>
+    <div>
+      <label>Tipo de processo</label>
+      <select name="tipo_processo">
+        <option value="">Todos</option>
+        {% for t in tipo_processo_choices %}
+          <option value="{{ t }}" {% if filtros.tipo_processo==t %}selected{% endif %}>{{ tipo_processo_labels[t] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>ND</label>
+      <select name="nd">
+        <option value="">Todas</option>
+        {% for n in nd_choices %}<option value="{{ n }}" {% if filtros.nd==n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Origem</label>
+      <select name="origem_id">
+        <option value="">Todas</option>
+        {% for o in origens %}<option value="{{ o.id }}" {% if filtros.origem_id==o.id %}selected{% endif %}>{{ o.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Setor</label>
+      <select name="setor">
+        <option value="">Todos</option>
+        {% for s in setor_choices %}<option value="{{ s }}" {% if filtros.setor==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><button class="btn" type="submit">Filtrar</button></div>
+  </form>
+</div>
+
+{% for l in linhas %}
+{% set demanda = l.autorizacao.demanda %}
+<div class="panel">
+  <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div>
+      <strong>{{ demanda.descricao }}</strong><br>
+      <span style="color:var(--text-dim); font-size:0.88em;">
+        ND {{ demanda.nd }} · Qtd autorizada {{ l.autorizacao.quantidade_autorizada }} ·
+        Origem {{ l.autorizacao.origem.nome }} · Setor {{ demanda.setor }} ·
+        Responsável {{ demanda.militar_responsavel.nome_completo() }}
+      </span>
+    </div>
+    <div style="text-align:right;">
+      {% if l.tipo_processo %}
+        <span class="badge badge-gold">{{ tipo_processo_labels[l.tipo_processo] }}</span>
+      {% else %}
+        <span class="badge badge-warn">Tipo de processo não definido</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="status-linha">
+    <span class="badge badge-ok">{{ l.status_atual }}</span>
+
+    {% if not l.tipo_processo and usuario.perfil in ("ADMIN", "SUPERADMIN") %}
+      <form class="inline" method="post" action="/status/{{ l.id }}/definir-tipo">
+        <select name="tipo_processo" required>
+          <option value="">Definir tipo de processo...</option>
+          {% for t in tipo_processo_choices %}<option value="{{ t }}">{{ tipo_processo_labels[t] }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-sm" type="submit">Definir</button>
+      </form>
+    {% endif %}
+
+    {% if l.tipo_processo and (usuario.nip == demanda.militar_responsavel_nip or usuario.perfil in ("ADMIN", "SUPERADMIN")) %}
+      <form class="inline" method="post" action="/status/{{ l.id }}/avancar">
+        <button class="btn btn-sm">Avançar status</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if l.historico %}
+  <div class="status-hist">
+    Histórico:
+    {% for h in l.historico %}
+      {{ h.status }} ({{ h.data.strftime("%d/%m/%Y") }}{% if not loop.last %}) →{% else %}){% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if not linhas %}
+<div class="panel">Nenhuma linha de status encontrada com os filtros aplicados.</div>
+{% endif %}
+{% endblock %}

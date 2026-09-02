@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Autorização CEM{% endblock %}
+{% block content %}
+<h1>Autorização de Demandas — CEM</h1>
+<p style="color:var(--text-dim);">Preencha a quantidade e a origem para autorizar cada demanda nesta rodada.
+Deixe em branco para não autorizar. Os saldos ao lado são atualizados em tempo real conforme você preenche,
+mas só são debitados de fato ao clicar em <strong>RATIFICAR</strong>.</p>
+
+<form method="post" action="/cem/ratificar" id="form-cem">
+<div class="cem-layout">
+  <div class="lista">
+    <div class="panel">
+      <table>
+        <thead>
+          <tr><th>Demanda</th><th>ND</th><th>Qtd. solicitada</th><th>Pendente</th><th>Vlr Unit.</th>
+              <th>Qtd. a autorizar</th><th>Origem</th></tr>
+        </thead>
+        <tbody>
+          {% for d in demandas %}
+          <tr class="linha-demanda" data-nd="{{ d.nd }}" data-valor-unitario="{{ d.valor_unitario }}" data-pendente="{{ d.quantidade_pendente() }}">
+            <td>{{ d.descricao }}<br><span style="color:var(--text-dim); font-size:0.85em;">{{ d.setor }} · {{ d.militar_responsavel.nome_completo() }}</span></td>
+            <td>{{ d.nd }}</td>
+            <td>{{ d.quantidade }}</td>
+            <td>{{ d.quantidade_pendente() }}</td>
+            <td>R$ {{ "%.2f"|format(d.valor_unitario) }}</td>
+            <td><input type="number" name="qtd_{{ d.id }}" class="campo-qtd" min="0" max="{{ d.quantidade_pendente() }}" data-demanda-id="{{ d.id }}"></td>
+            <td>
+              <select name="origem_{{ d.id }}" class="campo-origem" data-demanda-id="{{ d.id }}">
+                <option value="">—</option>
+                {% for o in origens %}
+                  <option value="{{ o.id }}" {% if d.origem_desejada_id==o.id %}selected{% endif %}>{{ o.nome }}</option>
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not demandas %}
+          <tr><td colspan="7">Não há demandas com saldo pendente de autorização.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      {% if demandas %}
+      <div style="margin-top:16px;">
+        <button type="submit" class="btn btn-gold" onclick="return confirm('Ratificar todas as autorizações preenchidas nesta rodada? Essa ação debita os saldos e não pode ser desfeita pelo sistema.');">RATIFICAR</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="cem-sticky">
+    <div class="panel">
+      <h3 style="margin-top:0;">Saldos (ND × Origem)</h3>
+      <table id="tabela-saldos">
+        <thead><tr><th>ND</th><th>Origem</th><th>Saldo</th></tr></thead>
+        <tbody>
+          {% for nd in nd_choices %}
+            {% for o in origens %}
+            <tr data-chave="{{ nd }}|{{ o.id }}">
+              <td>{{ nd }}</td>
+              <td style="font-size:0.85em;">{{ o.nome }}</td>
+              <td class="valor-saldo">R$ {{ "%.2f"|format(saldos.get((nd, o.id), 0)) }}</td>
+            </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</form>
+
+<script>
+const saldosBase = {{ saldos_json|tojson }};
+
+function recalcular() {
+  const saldosAtuais = Object.assign({}, saldosBase);
+
+  document.querySelectorAll('.linha-demanda').forEach(function(linha) {
+    const nd = linha.dataset.nd;
+    const valorUnit = parseFloat(linha.dataset.valorUnitario);
+    const pendente = parseInt(linha.dataset.pendente, 10);
+    const inputQtd = linha.querySelector('.campo-qtd');
+    const selectOrigem = linha.querySelector('.campo-origem');
+    let qtd = parseInt(inputQtd.value, 10);
+    const origemId = selectOrigem.value;
+
+    if (!isNaN(qtd) && qtd > 0 && origemId) {
+      if (qtd > pendente) qtd = pendente;
+      const chave = nd + '|' + origemId;
+      const debito = qtd * valorUnit;
+      if (chave in saldosAtuais) {
+        saldosAtuais[chave] = saldosAtuais[chave] - debito;
+      } else {
+        saldosAtuais[chave] = -debito;
+      }
+    }
+  });
+
+  document.querySelectorAll('#tabela-saldos tbody tr').forEach(function(tr) {
+    const chave = tr.dataset.chave;
+    const valor = (chave in saldosAtuais) ? saldosAtuais[chave] : 0;
+    const celula = tr.querySelector('.valor-saldo');
+    celula.textContent = 'R$ ' + valor.toFixed(2);
+    celula.classList.toggle('saldo-neg', valor < 0);
+  });
+}
+
+document.querySelectorAll('.campo-qtd, .campo-origem').forEach(function(el) {
+  el.addEventListener('input', recalcular);
+  el.addEventListener('change', recalcular);
+});
+</script>
+{% endblock %}
