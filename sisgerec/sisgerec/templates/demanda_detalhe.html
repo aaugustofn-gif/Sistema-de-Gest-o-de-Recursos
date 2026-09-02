@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Demanda #{{ demanda.id }}{% endblock %}
+{% block content %}
+<h1>Demanda #{{ demanda.id }}</h1>
+<div class="panel">
+  <p><strong>{{ demanda.descricao }}</strong></p>
+  <p>ND {{ demanda.nd }} · Qtd {{ demanda.quantidade }} · Vlr Unit. R$ {{ "%.2f"|format(demanda.valor_unitario) }}
+     · Total R$ {{ "%.2f"|format(demanda.valor_total()) }}</p>
+  <p>Setor: {{ demanda.setor }} · Responsável: {{ demanda.militar_responsavel.nome_completo() }}</p>
+  <p>Origem desejada: {{ demanda.origem_desejada.nome if demanda.origem_desejada else "—" }}</p>
+  <p>Observações: {{ demanda.observacoes or "—" }}</p>
+  <p>Autorizado: {{ demanda.quantidade_autorizada_acumulada() }} / {{ demanda.quantidade }}
+     ({{ demanda.status_geral() }})</p>
+</div>
+
+<div class="panel">
+  <h2>Autorizações (rodadas do CEM)</h2>
+  {% if demanda.autorizacoes %}
+  <table>
+    <thead><tr><th>Data</th><th>Qtd</th><th>Origem</th><th>Ratificado por</th><th>Status atual</th></tr></thead>
+    <tbody>
+      {% for a in demanda.autorizacoes %}
+      <tr>
+        <td>{{ a.data_ratificacao.strftime("%d/%m/%Y %H:%M") }}</td>
+        <td>{{ a.quantidade_autorizada }}</td>
+        <td>{{ a.origem.nome }}</td>
+        <td>{{ a.ratificado_por.nome_completo() }}</td>
+        <td>{{ a.linha_status.status_atual if a.linha_status else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nenhuma autorização ainda.</p>
+  {% endif %}
+</div>
+{% endblock %}

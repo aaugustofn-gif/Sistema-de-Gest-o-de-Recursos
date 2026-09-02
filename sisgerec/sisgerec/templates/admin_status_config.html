@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Configuração de Status{% endblock %}
+{% block content %}
+<h1>Configuração de Listas de Status por Tipo de Processo</h1>
+<p style="color:var(--text-dim);">Defina, para cada tipo de processo, a sequência de status que uma
+parcela autorizada deve percorrer. A ordem de cadastro é a ordem do fluxo.</p>
+
+<div class="dashboard-cards" style="align-items:flex-start;">
+  {% for tipo in tipo_processo_choices %}
+  <div class="panel" style="min-width:260px; flex:1;">
+    <h3>{{ tipo_processo_labels[tipo] }}</h3>
+    <ol>
+      {% for item in listas[tipo] %}
+      <li style="margin-bottom:6px;">
+        {{ item.nome_status }}
+        <form class="inline" method="post" action="/status/config/{{ item.id }}/remover" onsubmit="return confirm('Remover este status?');">
+          <button class="btn btn-sm btn-danger" type="submit" style="margin-left:6px;">x</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ol>
+    <form method="post" action="/status/config/{{ tipo }}/adicionar" style="display:flex; gap:6px;">
+      <input type="text" name="nome_status" placeholder="Novo status..." required>
+      <button class="btn btn-sm btn-gold" type="submit">+</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
