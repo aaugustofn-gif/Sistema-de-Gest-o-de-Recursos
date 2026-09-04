@@ -24,6 +24,7 @@ def tela_autorizacao(request: Request, usuario=Depends(exigir_perfil("CEM")), db
     return templates.TemplateResponse("cem_autorizacao.html", {
         "request": request, "usuario": usuario, "demandas": demandas_pendentes,
         "origens": origens, "saldos": saldos, "saldos_json": saldos_serializaveis,
+        "nd_choices": models.ND_CHOICES,
     })
 
 
