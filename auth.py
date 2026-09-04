@@ -29,10 +29,16 @@ class NaoAutenticado(Exception):
     pass
 
 
+class SenhaDeveSerTrocada(Exception):
+    pass
+
+
 def exigir_login(request: Request, db: Session = Depends(get_db)) -> models.Usuario:
     usuario = get_usuario_logado(request, db)
     if not usuario:
         raise NaoAutenticado()
+    if usuario.deve_trocar_senha and request.url.path != "/trocar-senha":
+        raise SenhaDeveSerTrocada()
     return usuario
 
 

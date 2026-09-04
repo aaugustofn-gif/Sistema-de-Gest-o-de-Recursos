@@ -6,7 +6,10 @@
 <div class="panel">
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <h2 style="margin:0;">Demandas cadastradas</h2>
-    <a class="btn btn-gold" href="/demandas/nova">+ Nova Demanda</a>
+    <div>
+      <a class="btn" href="/demandas/exportar?nd={{ filtro_nd or '' }}&origem_id={{ filtro_origem or '' }}&setor={{ filtro_setor or '' }}">⬇ Exportar planilha</a>
+      <a class="btn btn-gold" href="/demandas/nova">+ Nova Demanda</a>
+    </div>
   </div>
 
   <form class="filtros" method="get" action="/demandas">
@@ -56,7 +59,12 @@
         </td>
         <td>{{ d.setor }}</td>
         <td>{{ d.militar_responsavel.nome_completo() }}</td>
-        <td><a class="btn btn-sm" href="/demandas/{{ d.id }}">Ver</a></td>
+        <td>
+          <a class="btn btn-sm" href="/demandas/{{ d.id }}">Ver</a>
+          {% if usuario.perfil in ("ADMIN", "SUPERADMIN") or usuario.nip == d.militar_responsavel_nip %}
+            <a class="btn btn-sm" href="/demandas/{{ d.id }}/editar">Editar</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

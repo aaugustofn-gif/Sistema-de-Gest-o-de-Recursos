@@ -3,7 +3,12 @@
 {% block content %}
 <h1>Demanda #{{ demanda.id }}</h1>
 <div class="panel">
-  <p><strong>{{ demanda.descricao }}</strong></p>
+  <div style="display:flex; justify-content:space-between;">
+    <p><strong>{{ demanda.descricao }}</strong></p>
+    {% if usuario.perfil in ("ADMIN", "SUPERADMIN") or usuario.nip == demanda.militar_responsavel_nip %}
+      <a class="btn btn-sm" href="/demandas/{{ demanda.id }}/editar">Editar</a>
+    {% endif %}
+  </div>
   <p>ND {{ demanda.nd }} · Qtd {{ demanda.quantidade }} · Vlr Unit. R$ {{ "%.2f"|format(demanda.valor_unitario) }}
      · Total R$ {{ "%.2f"|format(demanda.valor_total()) }}</p>
   <p>Setor: {{ demanda.setor }} · Responsável: {{ demanda.militar_responsavel.nome_completo() }}</p>

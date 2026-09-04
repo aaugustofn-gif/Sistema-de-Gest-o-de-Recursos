@@ -26,6 +26,7 @@ class Usuario(Base):
     setor = Column(String(20), nullable=False)
     perfil = Column(String(20), nullable=False)
     senha_hash = Column(String(255), nullable=False)
+    deve_trocar_senha = Column(Boolean, default=True, nullable=False)
     ativo = Column(Boolean, default=True, nullable=False)
     data_cadastro = Column(DateTime, default=dt.datetime.utcnow)
 

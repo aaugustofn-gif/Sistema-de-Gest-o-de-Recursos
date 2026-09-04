@@ -5,13 +5,39 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
-from database import Base, engine, get_db
-from auth import exigir_login, NaoAutenticado, hash_senha
+from database import Base, engine, get_db, DATABASE_URL, SessionLocal
+from auth import exigir_login, NaoAutenticado, SenhaDeveSerTrocada, hash_senha
 import models
-from routers import auth_routes, recursos, demandas, cem, status, admin
+from routers import auth_routes, recursos, demandas, cem, status, admin, senha
 
 Base.metadata.create_all(bind=engine)
+
+
+def migrar_esquema():
+    """Adiciona colunas novas em bancos já existentes (SQLAlchemy create_all não altera tabelas existentes)."""
+    db = SessionLocal()
+    try:
+        if DATABASE_URL.startswith("mysql"):
+            db.execute(text(
+                "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "
+                "deve_trocar_senha BOOLEAN NOT NULL DEFAULT TRUE"
+            ))
+            db.commit()
+        else:
+            try:
+                db.execute(text(
+                    "ALTER TABLE usuarios ADD COLUMN deve_trocar_senha BOOLEAN NOT NULL DEFAULT 1"
+                ))
+                db.commit()
+            except Exception:
+                db.rollback()
+    finally:
+        db.close()
+
+
+migrar_esquema()
 
 app = FastAPI(title="SisGeRec - Sistema de Gestão de Recursos")
 
@@ -22,6 +48,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(auth_routes.router)
+app.include_router(senha.router)
 app.include_router(recursos.router)
 app.include_router(demandas.router)
 app.include_router(cem.router)
@@ -32,6 +59,11 @@ app.include_router(admin.router)
 @app.exception_handler(NaoAutenticado)
 async def handler_nao_autenticado(request: Request, exc: NaoAutenticado):
     return RedirectResponse("/login", status_code=303)
+
+
+@app.exception_handler(SenhaDeveSerTrocada)
+async def handler_senha_deve_ser_trocada(request: Request, exc: SenhaDeveSerTrocada):
+    return RedirectResponse("/trocar-senha", status_code=303)
 
 
 @app.on_event("startup")

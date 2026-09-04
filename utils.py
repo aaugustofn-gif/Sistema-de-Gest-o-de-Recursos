@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from decimal import Decimal
+import io
+from openpyxl import Workbook
 import models
 
 
@@ -51,3 +53,22 @@ def proximo_status(db: Session, tipo_processo: str, status_atual: str):
 def eh_status_final(db: Session, tipo_processo: str, status_atual: str) -> bool:
     lista = lista_status_tipo_processo(db, tipo_processo)
     return bool(lista) and status_atual == lista[-1]
+
+
+def gerar_xlsx(headers, linhas, nome_aba="Planilha"):
+    """Gera um arquivo .xlsx em memória a partir de cabeçalhos e linhas de dados."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = nome_aba[:31]
+    ws.append(headers)
+    for linha in linhas:
+        ws.append(linha)
+
+    for col in ws.columns:
+        largura = max((len(str(c.value)) if c.value is not None else 0) for c in col) + 2
+        ws.column_dimensions[col[0].column_letter].width = min(largura, 50)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer

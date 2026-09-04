@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Trocar Senha{% endblock %}
+{% block content %}
+<h1>Alterar Senha</h1>
+<div class="panel" style="max-width:420px;">
+  {% if obrigatorio %}
+    <div class="erro">Por segurança, você precisa definir uma nova senha antes de continuar.</div>
+  {% endif %}
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="post" action="/trocar-senha">
+    <label>Senha atual</label>
+    <input type="password" name="senha_atual" required autofocus>
+    <label>Nova senha (mínimo 8 caracteres)</label>
+    <input type="password" name="nova_senha" required minlength="8">
+    <label>Confirmar nova senha</label>
+    <input type="password" name="confirmar_senha" required minlength="8">
+    <div style="margin-top:16px;">
+      <button class="btn btn-gold" type="submit">Salvar nova senha</button>
+      {% if not obrigatorio %}<a class="btn" href="/">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

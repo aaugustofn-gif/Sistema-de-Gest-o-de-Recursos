@@ -28,9 +28,12 @@
 <div class="panel">
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <h2>Lançamentos de Recurso</h2>
-    {% if usuario.perfil in ("ADMIN", "SUPERADMIN") %}
-      <a class="btn btn-gold" href="/recursos/novo">+ Novo Recurso</a>
-    {% endif %}
+    <div>
+      <a class="btn" href="/recursos/exportar?nd={{ filtro_nd or '' }}&origem_id={{ filtro_origem or '' }}">⬇ Exportar planilha</a>
+      {% if usuario.perfil in ("ADMIN", "SUPERADMIN") %}
+        <a class="btn btn-gold" href="/recursos/novo">+ Novo Recurso</a>
+      {% endif %}
+    </div>
   </div>
 
   <form class="filtros" method="get" action="/recursos">

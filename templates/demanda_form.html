@@ -1,30 +1,42 @@
 {% extends "base.html" %}
-{% block title %}Nova Demanda{% endblock %}
+{% block title %}{% if demanda %}Editar{% else %}Nova{% endif %} Demanda{% endblock %}
 {% block content %}
-<h1>Nova Demanda</h1>
+<h1>{% if demanda %}Editar Demanda{% else %}Nova Demanda{% endif %}</h1>
 <div class="panel" style="max-width:520px;">
   {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <form method="post" action="/demandas/nova">
+  {% if demanda and bloqueado %}
+    <div class="erro">Esta demanda já tem autorização(ões) do CEM: ND e valor unitário não podem
+    mais ser alterados (isso afetaria os saldos já debitados). Você ainda pode ajustar a descrição,
+    a quantidade (nunca abaixo do já autorizado), a origem desejada e as observações.</div>
+  {% endif %}
+  <form method="post" action="{% if demanda %}/demandas/{{ demanda.id }}/editar{% else %}/demandas/nova{% endif %}">
     <label>Descrição da despesa</label>
-    <input type="text" name="descricao" required>
+    <input type="text" name="descricao" value="{{ demanda.descricao if demanda else '' }}" required>
     <label>Quantidade</label>
-    <input type="number" name="quantidade" min="1" required>
+    <input type="number" name="quantidade" min="1" value="{{ demanda.quantidade if demanda else '' }}" required>
     <label>ND</label>
-    <select name="nd" required>
-      {% for n in nd_choices %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+    <select name="nd" required {% if demanda and bloqueado %}disabled{% endif %}>
+      {% for n in nd_choices %}
+        <option value="{{ n }}" {% if demanda and demanda.nd==n %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
     </select>
+    {% if demanda and bloqueado %}<input type="hidden" name="nd" value="{{ demanda.nd }}">{% endif %}
     <label>Valor unitário (R$)</label>
-    <input type="text" name="valor_unitario" required>
+    <input type="text" name="valor_unitario" value="{{ demanda.valor_unitario if demanda else '' }}"
+           {% if demanda and bloqueado %}disabled{% else %}required{% endif %}>
+    {% if demanda and bloqueado %}<input type="hidden" name="valor_unitario" value="{{ demanda.valor_unitario }}">{% endif %}
     <label>Origem desejada (sugestão — o CEM confirma na autorização)</label>
     <select name="origem_desejada_id">
       <option value="">Não informar</option>
-      {% for o in origens %}<option value="{{ o.id }}">{{ o.nome }}</option>{% endfor %}
+      {% for o in origens %}
+        <option value="{{ o.id }}" {% if demanda and demanda.origem_desejada_id==o.id %}selected{% endif %}>{{ o.nome }}</option>
+      {% endfor %}
     </select>
     <label>Observações</label>
-    <textarea name="observacoes" rows="3"></textarea>
+    <textarea name="observacoes" rows="3">{{ demanda.observacoes if demanda else '' }}</textarea>
     <div style="margin-top:16px;">
-      <button class="btn btn-gold" type="submit">Cadastrar</button>
-      <a class="btn" href="/demandas">Cancelar</a>
+      <button class="btn btn-gold" type="submit">{% if demanda %}Salvar alterações{% else %}Cadastrar{% endif %}</button>
+      <a class="btn" href="{% if demanda %}/demandas/{{ demanda.id }}{% else %}/demandas{% endif %}">Cancelar</a>
     </div>
   </form>
 </div>

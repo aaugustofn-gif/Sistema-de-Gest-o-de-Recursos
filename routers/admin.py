@@ -68,6 +68,7 @@ def resetar_senha(nip: str, usuario=Depends(exigir_perfil("ADMIN")), db: Session
     if alvo:
         nova_senha = secrets.token_urlsafe(6)
         alvo.senha_hash = hash_senha(nova_senha)
+        alvo.deve_trocar_senha = True
         db.commit()
     destino = f"/admin/usuarios?nova_senha={nova_senha}&nip_reset={nip}" if nova_senha else "/admin/usuarios"
     return RedirectResponse(destino, status_code=303)
