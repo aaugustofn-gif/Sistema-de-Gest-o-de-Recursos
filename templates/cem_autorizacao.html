@@ -70,7 +70,11 @@ mas só são debitados de fato ao clicar em <strong>RATIFICAR</strong>.</p>
 </form>
 
 <script>
-const saldosBase = {{ saldos_json|tojson }};
+const saldosBase = {
+{% for chave, valor in saldos_json.items() %}
+  "{{ chave }}": {{ valor }}{% if not loop.last %},{% endif %}
+{% endfor %}
+};
 
 function recalcular() {
   const saldosAtuais = Object.assign({}, saldosBase);
