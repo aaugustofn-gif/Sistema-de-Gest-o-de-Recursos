@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, Form, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from decimal import Decimal
+from typing import List
 import datetime as dt
 from database import get_db
 from auth import exigir_perfil
@@ -13,23 +14,34 @@ router = APIRouter()
 
 
 @router.get("/cem/autorizar")
-def tela_autorizacao(request: Request, usuario=Depends(exigir_perfil("CEM")), db: Session = Depends(get_db)):
+def tela_autorizacao(request: Request, nd: List[str] = Query(default=[]),
+                      usuario=Depends(exigir_perfil("CEM")), db: Session = Depends(get_db)):
+    nds_selecionadas = [n for n in nd if n in models.ND_CHOICES]
+
     demandas = db.query(models.Demanda).order_by(models.Demanda.data_cadastro.asc()).all()
     demandas_pendentes = [d for d in demandas if d.quantidade_pendente() > 0]
+    if nds_selecionadas:
+        demandas_pendentes = [d for d in demandas_pendentes if d.nd in nds_selecionadas]
+
     origens = db.query(models.Origem).filter(models.Origem.ativo == True).order_by(models.Origem.nome).all()
     saldos = calcular_saldos(db)
 
-    saldos_serializaveis = {f"{nd}|{oid}": float(v) for (nd, oid), v in saldos.items()}
+    nds_para_saldo = nds_selecionadas if nds_selecionadas else models.ND_CHOICES
+    saldos_serializaveis = {
+        f"{n}|{oid}": float(v) for (n, oid), v in saldos.items() if n in nds_para_saldo
+    }
 
     return templates.TemplateResponse("cem_autorizacao.html", {
         "request": request, "usuario": usuario, "demandas": demandas_pendentes,
         "origens": origens, "saldos": saldos, "saldos_json": saldos_serializaveis,
-        "nd_choices": models.ND_CHOICES,
+        "nd_choices": models.ND_CHOICES, "nds_selecionadas": nds_selecionadas,
+        "nds_para_saldo": nds_para_saldo,
     })
 
 
 @router.post("/cem/ratificar")
-async def ratificar(request: Request, usuario=Depends(exigir_perfil("CEM")), db: Session = Depends(get_db)):
+async def ratificar(request: Request, nd: List[str] = Query(default=[]),
+                     usuario=Depends(exigir_perfil("CEM")), db: Session = Depends(get_db)):
     form = await request.form()
 
     # Coleta linhas preenchidas: campos demanda_qtd_<id> e demanda_origem_<id>
@@ -87,4 +99,7 @@ async def ratificar(request: Request, usuario=Depends(exigir_perfil("CEM")), db:
         ))
 
     db.commit()
-    return RedirectResponse("/cem/autorizar", status_code=303)
+    destino = "/cem/autorizar"
+    if nd:
+        destino += "?" + "&".join(f"nd={n}" for n in nd)
+    return RedirectResponse(destino, status_code=303)

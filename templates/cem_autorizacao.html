@@ -6,7 +6,24 @@
 Deixe em branco para não autorizar. Os saldos ao lado são atualizados em tempo real conforme você preenche,
 mas só são debitados de fato ao clicar em <strong>RATIFICAR</strong>.</p>
 
-<form method="post" action="/cem/ratificar" id="form-cem">
+<div class="panel">
+  <form method="get" action="/cem/autorizar">
+    <label>Filtrar por ND (marque uma ou mais)</label>
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin:6px 0 12px;">
+      {% for n in nd_choices %}
+      <label style="display:inline-flex; align-items:center; gap:6px; font-weight:normal; color:var(--text);">
+        <input type="checkbox" name="nd" value="{{ n }}" style="width:auto;"
+               {% if n in nds_selecionadas %}checked{% endif %}>
+        ND {{ n }}
+      </label>
+      {% endfor %}
+    </div>
+    <button class="btn" type="submit">Filtrar</button>
+    {% if nds_selecionadas %}<a class="btn btn-sm" href="/cem/autorizar">Limpar filtro</a>{% endif %}
+  </form>
+</div>
+
+<form method="post" action="/cem/ratificar{% if nds_selecionadas %}?nd={{ nds_selecionadas|join('&nd=') }}{% endif %}" id="form-cem">
 <div class="cem-layout">
   <div class="lista">
     <div class="panel">
@@ -53,7 +70,7 @@ mas só são debitados de fato ao clicar em <strong>RATIFICAR</strong>.</p>
       <table id="tabela-saldos">
         <thead><tr><th>ND</th><th>Origem</th><th>Saldo</th></tr></thead>
         <tbody>
-          {% for nd in nd_choices %}
+          {% for nd in nds_para_saldo %}
             {% for o in origens %}
             <tr data-chave="{{ nd }}|{{ o.id }}">
               <td>{{ nd }}</td>
