@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from decimal import Decimal
 import datetime as dt
@@ -8,9 +7,9 @@ from database import get_db
 from auth import exigir_perfil
 from utils import calcular_saldos
 import models
+from webtemplates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/cem/autorizar")

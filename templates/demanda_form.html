@@ -39,5 +39,15 @@
       <a class="btn" href="{% if demanda %}/demandas/{{ demanda.id }}{% else %}/demandas{% endif %}">Cancelar</a>
     </div>
   </form>
+  {% if demanda and not bloqueado %}
+  <form method="post" action="/demandas/{{ demanda.id }}/excluir" style="margin-top:10px;"
+        onsubmit="return confirm('Excluir esta demanda permanentemente? Essa ação não pode ser desfeita.');">
+    <button class="btn btn-danger" type="submit">Excluir demanda</button>
+  </form>
+  {% elif demanda and bloqueado %}
+  <p style="color:var(--text-dim); font-size:0.85em; margin-top:10px;">
+    Esta demanda já tem autorização do CEM e por isso não pode mais ser excluída.
+  </p>
+  {% endif %}
 </div>
 {% endblock %}

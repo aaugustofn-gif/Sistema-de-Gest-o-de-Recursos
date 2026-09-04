@@ -50,6 +50,16 @@ def proximo_status(db: Session, tipo_processo: str, status_atual: str):
     return None  # já está no último status
 
 
+def int_ou_none(valor):
+    """Converte string de query param em int, tratando '' (opção 'Todas' dos filtros) como None."""
+    if valor in (None, ""):
+        return None
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        return None
+
+
 def eh_status_final(db: Session, tipo_processo: str, status_atual: str) -> bool:
     lista = lista_status_tipo_processo(db, tipo_processo)
     return bool(lista) and status_atual == lista[-1]

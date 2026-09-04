@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from decimal import Decimal, InvalidOperation
 from database import get_db
 from auth import exigir_login
-from utils import gerar_xlsx
+from utils import gerar_xlsx, int_ou_none
 import models
+from webtemplates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/demandas")
-def listar_demandas(request: Request, nd: str = None, origem_id: int = None, setor: str = None,
+def listar_demandas(request: Request, nd: str = None, origem_id: str = None, setor: str = None,
                      usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    origem_id = int_ou_none(origem_id)
     q = db.query(models.Demanda)
     if nd:
         q = q.filter(models.Demanda.nd == nd)
@@ -33,8 +33,9 @@ def listar_demandas(request: Request, nd: str = None, origem_id: int = None, set
 
 
 @router.get("/demandas/exportar")
-def exportar_demandas(nd: str = None, origem_id: int = None, setor: str = None,
+def exportar_demandas(nd: str = None, origem_id: str = None, setor: str = None,
                        usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    origem_id = int_ou_none(origem_id)
     q = db.query(models.Demanda)
     if nd:
         q = q.filter(models.Demanda.nd == nd)
@@ -153,6 +154,15 @@ def editar_demanda(demanda_id: int, request: Request, descricao: str = Form(...)
 
     db.commit()
     return RedirectResponse(f"/demandas/{demanda.id}", status_code=303)
+
+
+@router.post("/demandas/{demanda_id}/excluir")
+def excluir_demanda(demanda_id: int, usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    demanda = db.get(models.Demanda, demanda_id)
+    if demanda and _pode_editar(usuario, demanda) and not demanda.autorizacoes:
+        db.delete(demanda)
+        db.commit()
+    return RedirectResponse("/demandas", status_code=303)
 
 
 @router.get("/demandas/{demanda_id}")

@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from decimal import Decimal, InvalidOperation
 from database import get_db
 from auth import exigir_login, exigir_perfil
-from utils import calcular_saldos, gerar_xlsx
+from utils import calcular_saldos, gerar_xlsx, int_ou_none
 import models
+from webtemplates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/recursos")
-def listar_recursos(request: Request, nd: str = None, origem_id: int = None,
+def listar_recursos(request: Request, nd: str = None, origem_id: str = None,
                      usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    origem_id = int_ou_none(origem_id)
     saldos = calcular_saldos(db)
     origens = db.query(models.Origem).filter(models.Origem.ativo == True).order_by(models.Origem.nome).all()
 
@@ -40,8 +40,9 @@ def listar_recursos(request: Request, nd: str = None, origem_id: int = None,
 
 
 @router.get("/recursos/exportar")
-def exportar_recursos(nd: str = None, origem_id: int = None,
+def exportar_recursos(nd: str = None, origem_id: str = None,
                        usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    origem_id = int_ou_none(origem_id)
     q = db.query(models.Recurso)
     if nd:
         q = q.filter(models.Recurso.nd == nd)

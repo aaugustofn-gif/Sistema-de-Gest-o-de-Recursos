@@ -2,7 +2,6 @@ import os
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -11,6 +10,7 @@ from database import Base, engine, get_db, DATABASE_URL, SessionLocal
 from auth import exigir_login, NaoAutenticado, SenhaDeveSerTrocada, hash_senha
 import models
 from routers import auth_routes, recursos, demandas, cem, status, admin, senha
+from webtemplates import templates
 
 Base.metadata.create_all(bind=engine)
 
@@ -45,7 +45,6 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "troque-esta-chave-em-producao")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, same_site="lax", max_age=60 * 60 * 12)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
 app.include_router(auth_routes.router)
 app.include_router(senha.router)

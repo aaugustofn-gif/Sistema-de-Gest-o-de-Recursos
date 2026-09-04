@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 import datetime as dt
 from database import get_db
 from auth import exigir_login, exigir_perfil
-from utils import proximo_status, eh_status_final
+from utils import proximo_status, eh_status_final, int_ou_none
 import models
+from webtemplates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 def _ordenar(linhas):
@@ -19,8 +18,9 @@ def _ordenar(linhas):
 
 @router.get("/status")
 def painel_status(request: Request, status_filtro: str = None, tipo_processo: str = None,
-                   nd: str = None, origem_id: int = None, setor: str = None,
+                   nd: str = None, origem_id: str = None, setor: str = None,
                    usuario=Depends(exigir_login), db: Session = Depends(get_db)):
+    origem_id = int_ou_none(origem_id)
     q = db.query(models.LinhaStatus)
     linhas = q.all()
 
