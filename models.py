@@ -75,8 +75,11 @@ class Demanda(Base):
     def valor_total(self):
         return float(self.quantidade) * float(self.valor_unitario)
 
+    def autorizacoes_ativas(self):
+        return [a for a in self.autorizacoes if not a.cancelada]
+
     def quantidade_autorizada_acumulada(self):
-        return sum(a.quantidade_autorizada for a in self.autorizacoes)
+        return sum(a.quantidade_autorizada for a in self.autorizacoes_ativas())
 
     def quantidade_pendente(self):
         return self.quantidade - self.quantidade_autorizada_acumulada()
@@ -96,16 +99,28 @@ class Autorizacao(Base):
     demanda_id = Column(Integer, ForeignKey("demandas.id"), nullable=False)
     quantidade_autorizada = Column(Integer, nullable=False)
     origem_id = Column(Integer, ForeignKey("origens.id"), nullable=False)
+    valor_unitario = Column(Numeric(14, 2), nullable=True)  # "congelado" no momento da ratificação
     data_ratificacao = Column(DateTime, default=dt.datetime.utcnow)
     ratificado_por_nip = Column(String(20), ForeignKey("usuarios.nip"), nullable=False)
 
+    cancelada = Column(Boolean, default=False, nullable=False)
+    data_cancelamento = Column(DateTime, nullable=True)
+    cancelado_por_nip = Column(String(20), ForeignKey("usuarios.nip"), nullable=True)
+    motivo_cancelamento = Column(Text, nullable=True)
+
     demanda = relationship("Demanda", back_populates="autorizacoes")
     origem = relationship("Origem")
-    ratificado_por = relationship("Usuario")
+    ratificado_por = relationship("Usuario", foreign_keys=[ratificado_por_nip])
+    cancelado_por = relationship("Usuario", foreign_keys=[cancelado_por_nip])
     linha_status = relationship("LinhaStatus", back_populates="autorizacao", uselist=False)
 
+    def valor_unitario_efetivo(self):
+        """Valor unitário travado no momento da autorização; recorre ao valor atual da
+        demanda apenas como fallback para registros antigos que ainda não tinham esse campo."""
+        return self.valor_unitario if self.valor_unitario is not None else self.demanda.valor_unitario
+
     def valor(self):
-        return float(self.quantidade_autorizada) * float(self.demanda.valor_unitario)
+        return float(self.quantidade_autorizada) * float(self.valor_unitario_efetivo())
 
 
 class LinhaStatus(Base):

@@ -57,7 +57,7 @@ def painel_status(request: Request, status_filtro: str = None, tipo_processo: st
 def definir_tipo_processo(linha_id: int, tipo_processo: str = Form(...),
                            usuario=Depends(exigir_perfil("ADMIN")), db: Session = Depends(get_db)):
     linha = db.get(models.LinhaStatus, linha_id)
-    if linha and not linha.tipo_processo:
+    if linha and not linha.tipo_processo and not linha.autorizacao.cancelada:
         linha.tipo_processo = tipo_processo
         db.commit()
     return RedirectResponse("/status", status_code=303)
@@ -66,7 +66,7 @@ def definir_tipo_processo(linha_id: int, tipo_processo: str = Form(...),
 @router.post("/status/{linha_id}/avancar")
 def avancar_status(linha_id: int, usuario=Depends(exigir_login), db: Session = Depends(get_db)):
     linha = db.get(models.LinhaStatus, linha_id)
-    if not linha or not linha.tipo_processo:
+    if not linha or not linha.tipo_processo or linha.autorizacao.cancelada:
         return RedirectResponse("/status", status_code=303)
 
     demanda = linha.autorizacao.demanda
@@ -87,6 +87,31 @@ def avancar_status(linha_id: int, usuario=Depends(exigir_login), db: Session = D
     if eh_status_final(db, linha.tipo_processo, novo):
         linha.ordem_manual = 1  # empurra para o final da listagem
 
+    db.commit()
+    return RedirectResponse("/status", status_code=303)
+
+
+@router.post("/status/{linha_id}/cancelar")
+def cancelar_processo(linha_id: int, motivo: str = Form(""),
+                       usuario=Depends(exigir_perfil("ADMIN")), db: Session = Depends(get_db)):
+    """Cancela a autorização/processo de aquisição: libera o saldo (deixa de ser debitado)
+    e a demanda volta a ter saldo pendente de autorização, podendo ser autorizada novamente."""
+    linha = db.get(models.LinhaStatus, linha_id)
+    if not linha or linha.autorizacao.cancelada:
+        return RedirectResponse("/status", status_code=303)
+
+    agora = dt.datetime.utcnow()
+    autorizacao = linha.autorizacao
+    autorizacao.cancelada = True
+    autorizacao.data_cancelamento = agora
+    autorizacao.cancelado_por_nip = usuario.nip
+    autorizacao.motivo_cancelamento = motivo or None
+
+    linha.status_atual = "CANCELADA"
+    linha.ordem_manual = 1  # empurra para o final da listagem
+    db.add(models.StatusHistorico(
+        linha_status_id=linha.id, status="CANCELADA", data=agora, alterado_por_nip=usuario.nip,
+    ))
     db.commit()
     return RedirectResponse("/status", status_code=303)
 

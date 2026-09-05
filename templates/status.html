@@ -45,18 +45,22 @@
 
 {% for l in linhas %}
 {% set demanda = l.autorizacao.demanda %}
-<div class="panel">
+{% set cancelada = l.autorizacao.cancelada %}
+<div class="panel" {% if cancelada %}style="opacity:0.65;"{% endif %}>
   <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
     <div>
       <strong>{{ demanda.descricao }}</strong><br>
       <span style="color:var(--text-dim); font-size:0.88em;">
         ND {{ demanda.nd }} · Qtd autorizada {{ l.autorizacao.quantidade_autorizada }} ·
+        Vlr Unit. R$ {{ "%.2f"|format(l.autorizacao.valor_unitario_efetivo()) }} ·
         Origem {{ l.autorizacao.origem.nome }} · Setor {{ demanda.setor }} ·
         Responsável {{ demanda.militar_responsavel.nome_completo() }}
       </span>
     </div>
     <div style="text-align:right;">
-      {% if l.tipo_processo %}
+      {% if cancelada %}
+        <span class="badge badge-warn">CANCELADA</span>
+      {% elif l.tipo_processo %}
         <span class="badge badge-gold">{{ tipo_processo_labels[l.tipo_processo] }}</span>
       {% else %}
         <span class="badge badge-warn">Tipo de processo não definido</span>
@@ -65,22 +69,38 @@
   </div>
 
   <div class="status-linha">
-    <span class="badge badge-ok">{{ l.status_atual }}</span>
+    <span class="badge {% if cancelada %}badge-warn{% else %}badge-ok{% endif %}">{{ l.status_atual }}</span>
 
-    {% if not l.tipo_processo and usuario.perfil in ("ADMIN", "SUPERADMIN") %}
-      <form class="inline" method="post" action="/status/{{ l.id }}/definir-tipo">
-        <select name="tipo_processo" required>
-          <option value="">Definir tipo de processo...</option>
-          {% for t in tipo_processo_choices %}<option value="{{ t }}">{{ tipo_processo_labels[t] }}</option>{% endfor %}
-        </select>
-        <button class="btn btn-sm" type="submit">Definir</button>
-      </form>
-    {% endif %}
+    {% if not cancelada %}
+      {% if not l.tipo_processo and usuario.perfil in ("ADMIN", "SUPERADMIN") %}
+        <form class="inline" method="post" action="/status/{{ l.id }}/definir-tipo">
+          <select name="tipo_processo" required>
+            <option value="">Definir tipo de processo...</option>
+            {% for t in tipo_processo_choices %}<option value="{{ t }}">{{ tipo_processo_labels[t] }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-sm" type="submit">Definir</button>
+        </form>
+      {% endif %}
 
-    {% if l.tipo_processo and (usuario.nip == demanda.militar_responsavel_nip or usuario.perfil in ("ADMIN", "SUPERADMIN")) %}
-      <form class="inline" method="post" action="/status/{{ l.id }}/avancar">
-        <button class="btn btn-sm">Avançar status</button>
-      </form>
+      {% if l.tipo_processo and (usuario.nip == demanda.militar_responsavel_nip or usuario.perfil in ("ADMIN", "SUPERADMIN")) %}
+        <form class="inline" method="post" action="/status/{{ l.id }}/avancar">
+          <button class="btn btn-sm">Avançar status</button>
+        </form>
+      {% endif %}
+
+      {% if usuario.perfil in ("ADMIN", "SUPERADMIN") %}
+        <form class="inline" method="post" action="/status/{{ l.id }}/cancelar"
+              onsubmit="return confirm('Cancelar este processo? O saldo será liberado de volta para Recursos e a demanda voltará a ficar pendente de autorização. Essa ação não pode ser desfeita.');">
+          <input type="text" name="motivo" placeholder="Motivo (opcional)" style="width:160px; display:inline-block;">
+          <button class="btn btn-sm btn-danger" type="submit">Cancelar processo</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <span style="color:var(--text-dim); font-size:0.85em;">
+        Cancelado em {{ l.autorizacao.data_cancelamento.strftime("%d/%m/%Y") }}
+        por {{ l.autorizacao.cancelado_por.nome_completo() }}
+        {% if l.autorizacao.motivo_cancelamento %} — motivo: {{ l.autorizacao.motivo_cancelamento }}{% endif %}
+      </span>
     {% endif %}
   </div>
 

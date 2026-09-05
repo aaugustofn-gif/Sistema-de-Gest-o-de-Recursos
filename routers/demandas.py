@@ -109,7 +109,7 @@ def editar_demanda_form(demanda_id: int, request: Request, usuario=Depends(exigi
         return RedirectResponse("/demandas", status_code=303)
 
     origens = db.query(models.Origem).filter(models.Origem.ativo == True).order_by(models.Origem.nome).all()
-    bloqueado = len(demanda.autorizacoes) > 0  # já tem alguma autorização: trava ND e valor unitário
+    bloqueado = len(demanda.autorizacoes_ativas()) > 0  # já tem autorização ativa: trava só a ND
     return templates.TemplateResponse("demanda_form.html", {
         "request": request, "usuario": usuario, "origens": origens,
         "nd_choices": models.ND_CHOICES, "erro": None, "demanda": demanda, "bloqueado": bloqueado,
@@ -118,21 +118,22 @@ def editar_demanda_form(demanda_id: int, request: Request, usuario=Depends(exigi
 
 @router.post("/demandas/{demanda_id}/editar")
 def editar_demanda(demanda_id: int, request: Request, descricao: str = Form(...),
-                    quantidade: int = Form(...), nd: str = Form(None), valor_unitario: str = Form(None),
+                    quantidade: int = Form(...), nd: str = Form(None), valor_unitario: str = Form(...),
                     origem_desejada_id: str = Form(""), observacoes: str = Form(""),
                     usuario=Depends(exigir_login), db: Session = Depends(get_db)):
     demanda = db.get(models.Demanda, demanda_id)
     if not demanda or not _pode_editar(usuario, demanda):
         return RedirectResponse("/demandas", status_code=303)
 
-    bloqueado = len(demanda.autorizacoes) > 0
+    bloqueado = len(demanda.autorizacoes_ativas()) > 0
     origens = db.query(models.Origem).filter(models.Origem.ativo == True).order_by(models.Origem.nome).all()
 
     ja_autorizado = demanda.quantidade_autorizada_acumulada()
     erro = None
+    valor_dec = None
     if quantidade <= 0 or quantidade < ja_autorizado:
         erro = f"Quantidade não pode ser menor do que a já autorizada ({ja_autorizado})."
-    elif not bloqueado:
+    else:
         try:
             valor_dec = Decimal(valor_unitario.replace(",", "."))
         except (InvalidOperation, AttributeError):
@@ -148,9 +149,9 @@ def editar_demanda(demanda_id: int, request: Request, descricao: str = Form(...)
     demanda.quantidade = quantidade
     demanda.origem_desejada_id = int(origem_desejada_id) if origem_desejada_id else None
     demanda.observacoes = observacoes
+    demanda.valor_unitario = valor_dec  # editável mesmo após autorizada (preço final da licitação)
     if not bloqueado:
         demanda.nd = nd
-        demanda.valor_unitario = Decimal(valor_unitario.replace(",", "."))
 
     db.commit()
     return RedirectResponse(f"/demandas/{demanda.id}", status_code=303)
@@ -159,7 +160,7 @@ def editar_demanda(demanda_id: int, request: Request, descricao: str = Form(...)
 @router.post("/demandas/{demanda_id}/excluir")
 def excluir_demanda(demanda_id: int, usuario=Depends(exigir_login), db: Session = Depends(get_db)):
     demanda = db.get(models.Demanda, demanda_id)
-    if demanda and _pode_editar(usuario, demanda) and not demanda.autorizacoes:
+    if demanda and _pode_editar(usuario, demanda) and not demanda.autorizacoes_ativas():
         db.delete(demanda)
         db.commit()
     return RedirectResponse("/demandas", status_code=303)

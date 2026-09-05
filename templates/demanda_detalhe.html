@@ -22,15 +22,22 @@
   <h2>Autorizações (rodadas do CEM)</h2>
   {% if demanda.autorizacoes %}
   <table>
-    <thead><tr><th>Data</th><th>Qtd</th><th>Origem</th><th>Ratificado por</th><th>Status atual</th></tr></thead>
+    <thead><tr><th>Data</th><th>Qtd</th><th>Vlr Unit. na autorização</th><th>Origem</th><th>Ratificado por</th><th>Status atual</th></tr></thead>
     <tbody>
       {% for a in demanda.autorizacoes %}
-      <tr>
+      <tr {% if a.cancelada %}style="opacity:0.6;"{% endif %}>
         <td>{{ a.data_ratificacao.strftime("%d/%m/%Y %H:%M") }}</td>
         <td>{{ a.quantidade_autorizada }}</td>
+        <td>R$ {{ "%.2f"|format(a.valor_unitario_efetivo()) }}</td>
         <td>{{ a.origem.nome }}</td>
         <td>{{ a.ratificado_por.nome_completo() }}</td>
-        <td>{{ a.linha_status.status_atual if a.linha_status else "—" }}</td>
+        <td>
+          {% if a.cancelada %}
+            <span class="badge badge-warn">CANCELADA</span>
+          {% else %}
+            {{ a.linha_status.status_atual if a.linha_status else "—" }}
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

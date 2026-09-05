@@ -13,10 +13,10 @@ def calcular_saldos(db: Session):
         chave = (r.nd, r.origem_id)
         saldos[chave] = saldos.get(chave, Decimal("0")) + Decimal(r.valor)
 
-    for a in db.query(models.Autorizacao).all():
+    for a in db.query(models.Autorizacao).filter(models.Autorizacao.cancelada == False).all():
         demanda = a.demanda
         chave = (demanda.nd, a.origem_id)
-        debito = Decimal(a.quantidade_autorizada) * Decimal(demanda.valor_unitario)
+        debito = Decimal(a.quantidade_autorizada) * Decimal(a.valor_unitario_efetivo())
         saldos[chave] = saldos.get(chave, Decimal("0")) - debito
 
     return saldos

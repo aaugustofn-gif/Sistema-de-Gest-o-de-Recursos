@@ -24,11 +24,47 @@ def migrar_esquema():
                 "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "
                 "deve_trocar_senha BOOLEAN NOT NULL DEFAULT TRUE"
             ))
+            db.execute(text(
+                "ALTER TABLE autorizacoes ADD COLUMN IF NOT EXISTS valor_unitario DECIMAL(14,2) NULL"
+            ))
+            db.execute(text(
+                "ALTER TABLE autorizacoes ADD COLUMN IF NOT EXISTS cancelada BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            db.execute(text(
+                "ALTER TABLE autorizacoes ADD COLUMN IF NOT EXISTS data_cancelamento DATETIME NULL"
+            ))
+            db.execute(text(
+                "ALTER TABLE autorizacoes ADD COLUMN IF NOT EXISTS cancelado_por_nip VARCHAR(20) NULL"
+            ))
+            db.execute(text(
+                "ALTER TABLE autorizacoes ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT NULL"
+            ))
+            db.commit()
+            # Preenche o valor unitário congelado para autorizações criadas antes desse campo existir
+            db.execute(text(
+                "UPDATE autorizacoes a JOIN demandas d ON a.demanda_id = d.id "
+                "SET a.valor_unitario = d.valor_unitario WHERE a.valor_unitario IS NULL"
+            ))
             db.commit()
         else:
+            for comando in [
+                "ALTER TABLE usuarios ADD COLUMN deve_trocar_senha BOOLEAN NOT NULL DEFAULT 1",
+                "ALTER TABLE autorizacoes ADD COLUMN valor_unitario DECIMAL(14,2) NULL",
+                "ALTER TABLE autorizacoes ADD COLUMN cancelada BOOLEAN NOT NULL DEFAULT 0",
+                "ALTER TABLE autorizacoes ADD COLUMN data_cancelamento DATETIME NULL",
+                "ALTER TABLE autorizacoes ADD COLUMN cancelado_por_nip VARCHAR(20) NULL",
+                "ALTER TABLE autorizacoes ADD COLUMN motivo_cancelamento TEXT NULL",
+            ]:
+                try:
+                    db.execute(text(comando))
+                    db.commit()
+                except Exception:
+                    db.rollback()
             try:
                 db.execute(text(
-                    "ALTER TABLE usuarios ADD COLUMN deve_trocar_senha BOOLEAN NOT NULL DEFAULT 1"
+                    "UPDATE autorizacoes SET valor_unitario = "
+                    "(SELECT valor_unitario FROM demandas WHERE demandas.id = autorizacoes.demanda_id) "
+                    "WHERE valor_unitario IS NULL"
                 ))
                 db.commit()
             except Exception:
@@ -43,6 +79,16 @@ app = FastAPI(title="SisGeRec - Sistema de Gestão de Recursos")
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "troque-esta-chave-em-producao")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, same_site="lax", max_age=60 * 60 * 12)
+
+
+@app.middleware("http")
+async def sem_cache(request: Request, call_next):
+    """Evita que o navegador (especialmente Safari/iPad) sirva páginas em cache com saldos/status
+    desatualizados após uma ratificação, cancelamento ou mudança de status."""
+    response = await call_next(request)
+    if request.url.path != "/static" and not request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

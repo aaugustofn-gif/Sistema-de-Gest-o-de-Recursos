@@ -84,6 +84,7 @@ async def ratificar(request: Request, nd: List[str] = Query(default=[]),
     for demanda, qtd, origem_id in autorizacoes_a_criar:
         autorizacao = models.Autorizacao(
             demanda_id=demanda.id, quantidade_autorizada=qtd, origem_id=origem_id,
+            valor_unitario=demanda.valor_unitario,
             data_ratificacao=agora, ratificado_por_nip=usuario.nip,
         )
         db.add(autorizacao)
